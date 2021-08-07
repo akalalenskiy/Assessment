@@ -3,11 +3,14 @@
 
 #include "ConsumerBase.h"
 #include "Manager.h"
+#include "Queue.h"
 
 #include <iostream>
 #include <string>
 
-class StringConsumer : public MultyQueue_NS::ConsumerBase<std::string, std::string, StringConsumer>
+using namespace MultyQueue_NS;
+
+class StringConsumer : public ConsumerBase<std::string, std::string, StringConsumer>
 {
 public:
     void Consume(const std::string& key, const std::string& value)
@@ -16,13 +19,29 @@ public:
     }
 };
 
+//template<typename TValue>
+using CircularStringQueue = CircularQueue<std::string>;
+
 int main(int argc, char** argv)
-{    
-    MultyQueue_NS::Manager<std::string, std::string, StringConsumer> queueProcessor;
+{   
+    auto queueProcessor = std::make_shared<MultyQueue_NS::Manager<std::string, std::string, CircularStringQueue, StringConsumer>>();
 
-    StringConsumer stringConsumer;
+    auto stringConsumer = std::make_shared<StringConsumer>();
+    auto stringConsumer1 = std::make_shared<StringConsumer>();
+    auto stringConsumer2 = std::make_shared<StringConsumer>();
+    auto stringConsumer3 = std::make_shared<StringConsumer>();
 
-    queueProcessor.Subscribe(&stringConsumer);
+    queueProcessor->Subscribe(std::string("Key") , stringConsumer);
 
-    queueProcessor.Enqueue("Key", "Value");
+    queueProcessor->Enqueue("Key", "Value");
+    queueProcessor->Enqueue("Key", "Value 1");
+    queueProcessor->Enqueue("Key", "Value 2");
+
+    //queueProcessor->Enqueue("Key1", "Value");
+    //queueProcessor->Enqueue("Key2", "Value");
+    //queueProcessor->Enqueue("Key3", "Value");
+
+    //queueProcessor->Subscribe(std::string("Key1"), stringConsumer);
+    //queueProcessor->Subscribe(std::string("Key2"), stringConsumer);
+    //queueProcessor->Subscribe(std::string("Key3"), stringConsumer);
 }

@@ -1,5 +1,10 @@
+/// 
+/// @brief One queue per each key + TValue
+/// 
+
 #pragma once
 
+#include <memory>
 #include <unordered_map>
 
 #include "ConsumerBase.h"
@@ -8,13 +13,37 @@
 namespace MultyQueue_NS
 {
 
-template<typename TKey, typename TValue/*, typename TStorage*/, typename TConsumer, typename THash = std::hash<TKey>>
+/// @brief Queue controller (processor) class.
+///        One instance of processor per each combination of TKey and TValue
+/// 
+/// @tparam TKey Key type. Processor maintains one queue per each value of TKey
+/// 
+/// @tparam TValue Value type
+/// 
+/// @tparam TConsumer Consumer type
+/// 
+
+template<typename TKey, typename TValue, typename TQueue, typename TConsumer, typename TKeyHash = std::hash<TKey>>
 class Manager
 {
 public:
-    void Subscribe(ConsumerBase<TKey, TValue, TConsumer>* consumer)
+    using QueueName = std::string;
+
+    template<typename TKey, typename TValue>
+    static void createQueue()
     {
-        m_consumers["0"] = consumer;
+
+    }
+
+    template<typename TKey, typename TValue>
+    static void createNamedQueue(const QueueName& queueName)
+    {
+
+    }
+
+    void Subscribe(TKey key, std::shared_ptr<TConsumer>& consumer)
+    {
+        m_consumers[key] = consumer;
     }
 
     void start()
@@ -24,13 +53,19 @@ public:
 
     void Enqueue(TKey key, TValue value)
     {
-        auto* consumer = m_consumers["0"];
-        consumer->Consume(key, value);
+        auto queue = m_queues[key];
+        if (!queue)
+        {
+            queue = std::make_shared<QueueBase<TValue, TQueue>>();
+            m_queues[key] = queue;
+        }
+
+        queue->push(value);
     }
 
 private:
-    std::unordered_map<TKey, TValue, THash> m_queues;
-    std::unordered_map<TKey, ConsumerBase<TKey, TValue, TConsumer>*, THash> m_consumers;
+    std::unordered_map<TKey, std::shared_ptr<QueueBase<TValue, TQueue>>, TKeyHash> m_queues;
+    std::unordered_map<TKey, std::weak_ptr<TConsumer>, TKeyHash> m_consumers;
 };
 
 }
