@@ -152,12 +152,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Manager.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CircularQueue.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="ConsumerBase.h" />
-    <ClInclude Include="Manager.h" />
+    <ClInclude Include="MultiQueueProcessor.h" />
     <ClInclude Include="Queue.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

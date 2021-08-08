@@ -3,28 +3,70 @@
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
-#include <boost/circular_buffer.hpp>
+#include <thread>
 
 #include "Common.h"
+
+// Forward declaration
+class StringQueueProxy;
+class IntQueueProxy;
+class StringQueueBaseProxy;
+class IntQueueBaseProxy;
 
 namespace MultyQueue_NS
 {
 
-template<typename TValue, typename TQueueImpl>
+static constexpr size_t InitialCapacity = 1000;
+static constexpr size_t IncreaseCapacity = 1000;
+
+template<typename TKey, typename TValue, typename TQueueImpl, typename TConsumer>
 class QueueBase
 {
-public:
-    static constexpr size_t InitialCapacity = 1000;
-    static constexpr size_t IncreaseCapacity = 1000;
+    friend class StringQueueBaseProxy;
+    friend class IntQueueBaseProxy;
 
 public:
-    QueueBase()
+    QueueBase() : m_key{} {}
+
+    QueueBase(const TKey& key) : m_key(key)
     {
+        auto watchingLambda = [this]() {
+            while (!m_stopSubscriber)
+            {
+                std::unique_lock lk(m_lockForRead);
+                m_isNotEmpty.wait(lk,
+                    [this]() { return m_stopSubscriber || (!m_container.isEmpty() && !m_pauseSubscriber); }
+                );
+
+                if (m_stopSubscriber)
+                    return;
+
+                if (auto consumer = m_consumer.lock())
+                {
+                    consumer->consume(m_key, std::move(m_container.pop()));
+                }
+                else
+                {
+                    m_pauseSubscriber = true;
+                }
+
+                lk.unlock();
+                m_isNotFull.notify_one();
+            }
+        };
+
+        // start watching thread (paused)
+        m_thread = std::thread(std::move(watchingLambda));
     }
-
-    void init()
+   
+    ~QueueBase()
     {
-        m_isInited = true;
+        // Request watching thread to stop
+        m_stopSubscriber = true;
+        m_isNotEmpty.notify_one();
+
+        if (m_thread.joinable())
+            m_thread.join();
     }
 
     void push(TValue value)
@@ -40,17 +82,10 @@ public:
         m_isNotEmpty.notify_one();
     }
 
-    void pop(TValue res)
+    void subscribe(std::weak_ptr<TConsumer> consumer)
     {
-        std::unique_lock lk(m_lockForRead);
-        m_isNotEmpty.wait(lk,
-            [this]() { return !m_container.isEmpty(); /*!static_cast<TQueueImpl*>(this)->isEmpty();*/ }
-        );
-
-        res = std::move( m_container.pop() /*static_cast<TQueueImpl*>(this)->pop()*/);
-
-        lk.unlock();
-        m_isNotFull.notify_one();
+        m_consumer = std::move(consumer);
+        m_pauseSubscriber = false;
     }
 
     bool isInited() const
@@ -59,6 +94,13 @@ public:
     }
 
 protected:
+    void run()
+    {
+
+    }
+
+    const TKey m_key;
+
     TQueueImpl m_container;
 
     std::atomic_bool m_isInited = false;
@@ -70,54 +112,13 @@ protected:
     /// @brirf Signal that buffer is not empty
     std::condition_variable m_isNotEmpty;
     std::mutex m_lockForRead;
-};
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// 
-/// @brief Queue based on boost::circular_buffer
-///     Implements WaitForSpace behavior
-/// 
-template<typename TValue>
-class CircularQueue
-{
-public:
-    CircularQueue() : m_container(QueueBase<TValue, CircularQueue>::InitialCapacity) {}
+    std::weak_ptr<TConsumer> m_consumer;
 
-    static FullQueuePolicy fullQueuePolicy()
-    {
-        return FullQueuePolicy::WaitForSpace;
-    }
+    std::atomic_bool m_pauseSubscriber = true;
+    std::atomic_bool m_stopSubscriber = false;
 
-    void push(TValue value)
-    {
-        m_container.push_back(std::move(value));
-    }
-
-    bool isFull() const
-    {
-        const auto size = m_container.size();
-        const auto capacity = m_container.capacity();
-        return  size == capacity ;
-    }
-
-    bool isEmpty() const
-    {
-        return m_container.size() == 0;
-    }
-
-    TValue pop()
-    {
-        TValue res(std::move(*m_container.begin()));
-        m_container.pop_front();
-    }
-
-    bool isInited() const
-    {
-        return true;
-    }
-
-private:
-    boost::circular_buffer<TValue> m_container;
+    std::thread m_thread;
 };
 
 }

@@ -24,48 +24,37 @@ namespace MultyQueue_NS
 /// 
 
 template<typename TKey, typename TValue, typename TQueue, typename TConsumer, typename TKeyHash = std::hash<TKey>>
-class Manager
+class MultiQueueProcessor
 {
+    friend class MultyQueueProcessorProxy;
 public:
-    using QueueName = std::string;
-
-    template<typename TKey, typename TValue>
-    static void createQueue()
-    {
-
-    }
-
-    template<typename TKey, typename TValue>
-    static void createNamedQueue(const QueueName& queueName)
-    {
-
-    }
-
     void Subscribe(TKey key, std::shared_ptr<TConsumer>& consumer)
     {
-        m_consumers[key] = consumer;
+        getQueue(key)->subscribe(std::weak_ptr(consumer));
     }
 
-    void start()
+    void Enqueue(const TKey& key, TValue value)
     {
-        
+        getQueue(key)->push(value);
     }
 
-    void Enqueue(TKey key, TValue value)
+private:
+    using Queue = QueueBase<TKey, TValue, TQueue, TConsumer>;
+    using QueuePtr = std::shared_ptr<Queue>;
+
+    QueuePtr getQueue(const TKey& key)
     {
         auto queue = m_queues[key];
         if (!queue)
         {
-            queue = std::make_shared<QueueBase<TValue, TQueue>>();
+            queue = std::make_shared<Queue>(key);
             m_queues[key] = queue;
         }
 
-        queue->push(value);
+        return queue;
     }
 
-private:
-    std::unordered_map<TKey, std::shared_ptr<QueueBase<TValue, TQueue>>, TKeyHash> m_queues;
-    std::unordered_map<TKey, std::weak_ptr<TConsumer>, TKeyHash> m_consumers;
+    std::unordered_map<TKey, QueuePtr, TKeyHash> m_queues;
 };
 
 }

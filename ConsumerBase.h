@@ -9,9 +9,9 @@ template<typename TKey, typename TValue, typename TConsumer>
 class ConsumerBase
 {
 public:
-    void Consume(TKey key, TValue value)
+    void consume(TKey key, TValue value)
     {
-        return static_cast<TConsumer*>(this)->Consume(key, value);
+        return static_cast<TConsumer*>(this)->consume(key, value);
     }
 };
 
