@@ -20,19 +20,34 @@ namespace MultyQueue_NS
 /// 
 /// @tparam TValue Value type
 /// 
+/// @tparam TQueue Queue type
+/// 
 /// @tparam TConsumer Consumer type
+/// 
+/// @tparam TKeyHash Hash function for TKey
 /// 
 
 template<typename TKey, typename TValue, typename TQueue, typename TConsumer, typename TKeyHash = std::hash<TKey>>
 class MultiQueueProcessor
 {
+    // For unit testing purposes
     friend class MultyQueueProcessorProxy;
 public:
+    /// @brief Subscriber (consumer) shall use this method to subscribe for new objects in queue
+    /// 
+    /// @param key Key. Subscriber gets new objects addet to the queue with this key
+    /// 
+    /// @param consumer Shared pointer to consumer
     void Subscribe(TKey key, std::shared_ptr<TConsumer>& consumer)
     {
         getQueue(key)->subscribe(std::weak_ptr(consumer));
     }
 
+    /// @brief Put an element with given key and value into queue
+    /// 
+    /// @param key New elements key. Identifies the queue instances where to add the element
+    /// 
+    /// @param value New elements value
     void Enqueue(const TKey& key, TValue value)
     {
         getQueue(key)->push(value);
@@ -42,6 +57,7 @@ private:
     using Queue = QueueBase<TKey, TValue, TQueue, TConsumer>;
     using QueuePtr = std::shared_ptr<Queue>;
 
+    // Auxiliary function returns a queue instance if exists or creates a new one
     QueuePtr getQueue(const TKey& key)
     {
         auto queue = m_queues[key];

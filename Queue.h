@@ -1,3 +1,5 @@
+/// @brief Contains definition of QueueBase class, base class for queue
+///
 #pragma once
 
 #include <atomic>
@@ -16,18 +18,39 @@ class IntQueueBaseProxy;
 namespace MultyQueue_NS
 {
 
+/// @brief Initial capacity of queue when it is created
 static constexpr size_t InitialCapacity = 1000;
+/// @brief Not used in this version. Intended to be used when a queue capacity shall be increased
 static constexpr size_t IncreaseCapacity = 1000;
 
+
+/// @brief Base class for queue
+/// 
+/// @tparam TKey Queue key type
+/// 
+/// @tparam TValue Contained value type
+/// 
+/// @tparam TQueueImpl Queue storage type
+/// 
+/// @tparam TConsumer Consumer (subscriber) type
+/// 
 template<typename TKey, typename TValue, typename TQueueImpl, typename TConsumer>
 class QueueBase
 {
+    // These two friend classes for unot testing purposes
     friend class StringQueueBaseProxy;
     friend class IntQueueBaseProxy;
 
 public:
+    /// @brief Default constructor
+    ///
     QueueBase() : m_key{} {}
 
+    /// @brief Default constructor
+    ///     Constructs a queue with given key and starts subscription thread.
+    ///     Subscription thread remains suspended untill subscription
+    /// @param key Queue key
+    ///
     QueueBase(const TKey& key) : m_key(key)
     {
         auto watchingLambda = [this]() {
@@ -59,6 +82,8 @@ public:
         m_thread = std::thread(std::move(watchingLambda));
     }
    
+    /// @brief Destructor.
+    /// Stops subscription thread.
     ~QueueBase()
     {
         // Request watching thread to stop
@@ -69,36 +94,35 @@ public:
             m_thread.join();
     }
 
+    /// @brief Push an element to the queue
+    /// 
+    /// @param value A new element
+    /// 
     void push(TValue value)
     {
         std::unique_lock<std::mutex> lk(m_lockForInsert);
         m_isNotFull.wait(lk,
-            [this]() { return !m_container.isFull(); /*!static_cast<TQueueImpl*>(this)->isFull();*/ }
+            [this]() { return !m_container.isFull(); }
         );
 
-        m_container.push(std::move(value));//static_cast<TQueueImpl*>(this)->push(std::move(value));
+        m_container.push(std::move(value));
 
         lk.unlock();
         m_isNotEmpty.notify_one();
     }
 
+    /// @brief Get called by MultyQueueProcessor to initiate subscription
+    /// 
+    /// @<param consumer Weak pointer to subscriber
+    /// 
     void subscribe(std::weak_ptr<TConsumer> consumer)
     {
         m_consumer = std::move(consumer);
         m_pauseSubscriber = false;
     }
 
-    bool isInited() const
-    {
-        return true;
-    }
 
 protected:
-    void run()
-    {
-
-    }
-
     const TKey m_key;
 
     TQueueImpl m_container;
