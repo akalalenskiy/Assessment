@@ -38,7 +38,7 @@ public:
     /// @param key Key. Subscriber gets new objects addet to the queue with this key
     /// 
     /// @param consumer Shared pointer to consumer
-    void Subscribe(TKey key, std::shared_ptr<TConsumer>& consumer)
+    void subscribe(TKey key, std::shared_ptr<TConsumer>& consumer)
     {
         getQueue(key)->subscribe(std::weak_ptr(consumer));
     }
@@ -48,7 +48,7 @@ public:
     /// @param key New elements key. Identifies the queue instances where to add the element
     /// 
     /// @param value New elements value
-    void Enqueue(const TKey& key, TValue value)
+    void enqueue(const TKey& key, TValue value)
     {
         getQueue(key)->push(value);
     }

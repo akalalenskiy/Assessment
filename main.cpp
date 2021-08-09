@@ -71,21 +71,21 @@ int main(int argc, char** argv)
     auto stringConsumer3 = std::make_shared<StringConsumer>(strings3);
 
 
-    queueProcessor->Enqueue("Key1", "Value 1-0");
-    queueProcessor->Enqueue("Key1", "Value 1-1");
-    queueProcessor->Enqueue("Key1", "Value 1-2");
+    queueProcessor->enqueue("Key1", "Value 1-0");
+    queueProcessor->enqueue("Key1", "Value 1-1");
+    queueProcessor->enqueue("Key1", "Value 1-2");
 
-    queueProcessor->Enqueue("Key2", "Value 2-0");
-    queueProcessor->Enqueue("Key2", "Value 2-1");
-    queueProcessor->Enqueue("Key2", "Value 2-2");
+    queueProcessor->enqueue("Key2", "Value 2-0");
+    queueProcessor->enqueue("Key2", "Value 2-1");
+    queueProcessor->enqueue("Key2", "Value 2-2");
 
-    queueProcessor->Subscribe(std::string("Key1"), stringConsumer1);
-    queueProcessor->Subscribe(std::string("Key2"), stringConsumer2);
-    queueProcessor->Subscribe(std::string("Key3"), stringConsumer3);
+    queueProcessor->subscribe(std::string("Key1"), stringConsumer1);
+    queueProcessor->subscribe(std::string("Key2"), stringConsumer2);
+    queueProcessor->subscribe(std::string("Key3"), stringConsumer3);
 
-    queueProcessor->Enqueue("Key3", "Value 3-0");
-    queueProcessor->Enqueue("Key3", "Value 3-1");
-    queueProcessor->Enqueue("Key3", "Value 3-2");
+    queueProcessor->enqueue("Key3", "Value 3-0");
+    queueProcessor->enqueue("Key3", "Value 3-1");
+    queueProcessor->enqueue("Key3", "Value 3-2");
 
     const auto printList = [](std::list<std::string>& strings) {
         for (const auto& ss : strings)
@@ -129,7 +129,7 @@ int main(int argc, char** argv)
         {
             threads.push_back(std::thread([&queueProcessor, &consumers, key]()
                 {
-                    queueProcessor->Subscribe(key, consumers[key]);
+                    queueProcessor->subscribe(key, consumers[key]);
                 }));
 
             for (size_t prod = 0; prod < ProducersPerKey; ++prod)
@@ -138,7 +138,7 @@ int main(int argc, char** argv)
                     {
                         for (size_t i = prod * ValuesPerKey; i < (prod + 1) * ValuesPerKey; ++i)
                         {
-                            queueProcessor->Enqueue(key, i);
+                            queueProcessor->enqueue(key, i);
                         }
                     }));
             }

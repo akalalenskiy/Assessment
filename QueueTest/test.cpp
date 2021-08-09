@@ -125,13 +125,13 @@ TEST(PushAndPop, SimplePushAndPop_success)
     auto intConsumer = std::make_shared<IntConsumer>(intSet);
     for (int i = 0; i < 100; ++i)
     {
-        queueProcessor->Enqueue(0, i);
+        queueProcessor->enqueue(0, i);
     }
 
-    queueProcessor->Subscribe(0, intConsumer);
+    queueProcessor->subscribe(0, intConsumer);
     for (int i = 100; i < 200; ++i)
     {
-        queueProcessor->Enqueue(0, i);
+        queueProcessor->enqueue(0, i);
     }
 
     little_sleep(500ms);
@@ -165,7 +165,7 @@ TEST(PushAndPop, MultyThreadPushAndPop_success)
     {
         threads.push_back(std::thread([&queueProcessor, &consumers, key]()
             {
-                queueProcessor->Subscribe(key, consumers[key]);
+                queueProcessor->subscribe(key, consumers[key]);
             }));
 
         for (size_t prod = 0; prod < ProducersPerKey; ++prod)
@@ -174,7 +174,7 @@ TEST(PushAndPop, MultyThreadPushAndPop_success)
                 {
                     for (size_t i = prod * ValuesPerKey; i < (prod + 1) * ValuesPerKey; ++i)
                     {
-                        queueProcessor->Enqueue(key, i);
+                        queueProcessor->enqueue(key, i);
                     }
                 }));
         }
